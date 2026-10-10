@@ -1,0 +1,1127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Through My Glasses</title>
+<meta name="description" content="A playful vision simulator: dial in a prescription and see how blurry the world looks to people who wear glasses.">
+<meta property="og:title" content="Through My Glasses">
+<meta property="og:description" content="Got 20/20 vision? See what the rest of us see before we find our glasses.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👓</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Overpass:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fff7ec;
+    --bg-dot: #f1e2cc;
+    --ink: #1d2140;
+    --muted: #555a78;
+    --card: #ffffff;
+    --border: #eadfce;
+    --soft: #f7efe3;
+    --coral: #ff5d73;
+    --blue: #4361ee;
+    --sun: #ffc93c;
+    --mint: #1fb5a5;
+    --violet: #8e6cf0;
+    --ok-bg: #dff6ea;   --ok-ink: #0d5c37;
+    --bad-bg: #ffe3e6;  --bad-ink: #9b1c31;
+    --focus: #4361ee;
+    --shadow: 0 14px 34px -16px rgba(40, 30, 80, .35);
+    --radius: 22px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #13142b;
+      --bg-dot: #1d1f40;
+      --ink: #f4f2ff;
+      --muted: #b2b6d8;
+      --card: #1e2044;
+      --border: #313568;
+      --soft: #262955;
+      --ok-bg: #123b2a;  --ok-ink: #8ef0bf;
+      --bad-bg: #44172a; --bad-ink: #ffadc0;
+      --focus: #9aaaff;
+      --shadow: 0 14px 34px -16px rgba(0, 0, 0, .7);
+      color-scheme: dark;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background-color: var(--bg);
+    background-image: radial-gradient(var(--bg-dot) 1.6px, transparent 1.8px);
+    background-size: 24px 24px;
+    color: var(--ink);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  h1, h2, h3, .fun { font-family: "Fredoka", system-ui, sans-serif; }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+
+  .sr-only {
+    position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+  .skip {
+    position: absolute; left: 16px; top: -60px; z-index: 50;
+    background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px;
+    text-decoration: none; font-weight: 600;
+  }
+  .skip:focus { top: 12px; }
+
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 0 16px; }
+
+  /* ---------- Hero ---------- */
+  .hero { padding-top: 40px; padding-bottom: 20px; text-align: center; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    margin: 0 0 12px; padding: 6px 14px; border-radius: 999px;
+    background: var(--card); border: 1.5px solid var(--border);
+    font: 600 14px/1 "Fredoka", sans-serif; letter-spacing: .02em;
+  }
+  .eyebrow .wobble { display: inline-block; animation: wobble 3.2s ease-in-out infinite; }
+  @keyframes wobble { 0%, 70%, 100% { transform: rotate(0); } 78% { transform: rotate(-14deg); } 86% { transform: rotate(10deg); } 93% { transform: rotate(-4deg); } }
+  h1 {
+    margin: 0 auto; max-width: 18ch;
+    font-size: clamp(2rem, 5.2vw, 3.6rem); line-height: 1.05; font-weight: 700; letter-spacing: -.01em;
+  }
+  .blurword {
+    display: inline-block; color: var(--coral);
+    transition: filter .35s ease;
+  }
+  .lede { max-width: 60ch; margin: 16px auto 0; color: var(--muted); font-size: 1.08rem; }
+
+  /* ---------- Layout ---------- */
+  .app {
+    display: grid; gap: 24px; align-items: start;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    padding-top: 12px; padding-bottom: 32px;
+  }
+  .stage { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 14px; }
+
+  .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+
+  /* Scene picker: three rounded squares */
+  .picker { display: flex; gap: 12px; }
+  .scene-btn {
+    width: 92px; height: 92px; padding: 10px 6px 8px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    border: 2px solid var(--border); border-radius: 24px;
+    background: var(--card); color: var(--ink); cursor: pointer;
+    font: 600 13px/1 "Fredoka", sans-serif;
+    box-shadow: var(--shadow);
+    transition: transform .18s cubic-bezier(.3, 1.6, .5, 1), background .2s, color .2s, border-color .2s;
+  }
+  .scene-btn svg { width: 40px; height: 40px; }
+  .scene-btn:hover { transform: translateY(-3px) rotate(-2deg); }
+  .scene-btn[aria-checked="true"] {
+    background: var(--ink); color: var(--bg); border-color: var(--ink);
+    transform: translateY(-2px) scale(1.04);
+    box-shadow: 0 0 0 4px var(--sun), var(--shadow);
+  }
+  .scene-btn[aria-checked="true"] svg { color: var(--sun); }
+
+  /* Glasses switch */
+  .glasses-switch {
+    display: inline-flex; align-items: center; gap: 12px;
+    padding: 10px 14px 10px 18px; border-radius: 999px;
+    border: 2px solid var(--border); background: var(--card); color: var(--ink);
+    font: 600 17px/1 "Fredoka", sans-serif; cursor: pointer; box-shadow: var(--shadow);
+  }
+  .glasses-switch .track {
+    position: relative; width: 74px; height: 40px; border-radius: 999px;
+    background: var(--soft); border: 2px solid var(--border);
+    transition: background .25s;
+  }
+  .glasses-switch .knob {
+    position: absolute; top: 2px; left: 2px; width: 32px; height: 32px; border-radius: 50%;
+    background: var(--card); box-shadow: 0 2px 6px rgba(0,0,0,.25);
+    display: grid; place-items: center; font-size: 19px;
+    transition: transform .3s cubic-bezier(.3, 1.5, .5, 1);
+  }
+  .glasses-switch .state { min-width: 2.2em; text-align: left; color: var(--muted); }
+  .glasses-switch[aria-checked="true"] .track { background: var(--mint); border-color: var(--mint); }
+  .glasses-switch[aria-checked="true"] .knob { transform: translateX(34px) rotate(360deg); }
+  .glasses-switch[aria-checked="true"] .state { color: var(--ink); }
+
+  /* Viewer */
+  .viewer {
+    position: relative; margin: 0; aspect-ratio: 16 / 10;
+    border-radius: 26px; overflow: hidden; background: #cfe8f7;
+    box-shadow: var(--shadow), 0 0 0 6px var(--card);
+  }
+  .viewer svg { display: block; width: 100%; height: 100%; }
+  .chip {
+    position: absolute; top: 12px; z-index: 2;
+    padding: 6px 12px; border-radius: 999px;
+    background: rgba(20, 22, 45, .78); color: #fff;
+    font: 600 13px/1.2 "Fredoka", sans-serif;
+    backdrop-filter: blur(4px);
+  }
+  .chip.left { left: 12px; }
+  .chip.right { right: 12px; }
+  #lensLayer, #frameLayer { opacity: 0; visibility: hidden; transition: opacity .4s ease, visibility 0s linear .4s; }
+  .viewer.glasses-on #lensLayer, .viewer.glasses-on #frameLayer { opacity: 1; visibility: visible; transition: opacity .4s ease; }
+
+  .toast {
+    position: absolute; left: 50%; bottom: 18px; z-index: 3;
+    transform: translate(-50%, 20px) scale(.9); opacity: 0;
+    padding: 10px 18px; border-radius: 999px;
+    background: var(--sun); color: #2a1d00; font: 600 17px/1.2 "Fredoka", sans-serif;
+    box-shadow: 0 10px 24px -8px rgba(0,0,0,.4);
+    transition: opacity .3s, transform .35s cubic-bezier(.3, 1.6, .5, 1);
+    pointer-events: none; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
+
+  /* Readout */
+  .readout {
+    display: grid; grid-template-columns: auto 1fr; gap: 6px 20px; align-items: center;
+    padding: 16px 20px; border-radius: var(--radius);
+    background: var(--card); border: 1.5px solid var(--border); box-shadow: var(--shadow);
+  }
+  .acuity { grid-row: span 2; text-align: center; }
+  .acuity .label { display: block; font: 600 12px/1 "Fredoka", sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .acuity .value { display: block; font: 700 46px/1.05 "Fredoka", sans-serif; letter-spacing: -.02em; }
+  .caption { margin: 0; font: 600 20px/1.25 "Fredoka", sans-serif; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 11px; border-radius: 999px; font-size: 14px; font-weight: 600;
+  }
+  .badge.ok { background: var(--ok-bg); color: var(--ok-ink); }
+  .badge.bad { background: var(--bad-bg); color: var(--bad-ink); }
+  .effort { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+  .effort .bar { width: 72px; height: 10px; border-radius: 99px; background: var(--soft); overflow: hidden; }
+  .effort .fill { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--mint); transition: width .3s, background .3s; }
+  .explain-line { grid-column: 1 / -1; margin: 4px 0 0; font-size: 14px; color: var(--muted); }
+
+  /* ---------- Panel ---------- */
+  .panel {
+    padding: 22px 20px; border-radius: var(--radius);
+    background: var(--card); border: 1.5px solid var(--border); box-shadow: var(--shadow);
+  }
+  .panel h2 { margin: 0; font-size: 1.5rem; }
+
+  .rx {
+    margin: 14px 0 6px; padding: 12px 14px 10px; border-radius: 16px;
+    background: repeating-linear-gradient(0deg, transparent 0 27px, var(--border) 27px 28px), var(--soft);
+    border: 1.5px dashed var(--border);
+  }
+  .rx-head { display: flex; justify-content: space-between; font: 600 13px/1 "Fredoka", sans-serif; color: var(--muted); }
+  .rx-row { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 8px; text-align: center; }
+  .rx-row dt { font: 600 12px/1 "Fredoka", sans-serif; letter-spacing: .1em; color: var(--muted); }
+  .rx-row dd { margin: 4px 0 0; font: 700 22px/1.2 ui-monospace, "Cascadia Mono", Consolas, monospace; }
+  .zone { margin: 4px 0 18px; font-size: 14px; color: var(--muted); }
+  .zone strong { color: var(--ink); }
+
+  .control { margin: 0 0 18px; transition: opacity .25s; }
+  .control.inactive { opacity: .55; }
+  .control-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .control label { font: 600 16px/1.2 "Fredoka", sans-serif; }
+  .control output { font: 700 15px/1 ui-monospace, "Cascadia Mono", Consolas, monospace; white-space: nowrap; }
+  .scale { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .hint { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 36px; margin: 6px 0 0; background: transparent; cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 12px; border-radius: 99px; background: var(--track, var(--soft));
+    box-shadow: inset 0 0 0 1.5px rgba(0,0,0,.08);
+  }
+  input[type="range"]::-moz-range-track {
+    height: 12px; border-radius: 99px; background: var(--track, var(--soft));
+    box-shadow: inset 0 0 0 1.5px rgba(0,0,0,.08);
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 30px; height: 30px; margin-top: -9px; border-radius: 50%;
+    background: #fff; border: 4px solid var(--ink); box-shadow: 0 3px 8px rgba(0,0,0,.25);
+    transition: transform .15s;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #fff; border: 4px solid var(--ink); box-shadow: 0 3px 8px rgba(0,0,0,.25);
+  }
+  input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.15); }
+  input[type="range"]:focus-visible { outline: none; }
+  input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px var(--card), 0 0 0 7px var(--focus); }
+  input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px var(--card), 0 0 0 7px var(--focus); }
+
+  #sph  { --track: linear-gradient(90deg, #4361ee 0%, #9fb1ff 50%, #e9e4f5 62.5%, #ffd98a 75%, #ff9a3c 100%); }
+  #cyl  { --track: linear-gradient(90deg, #8e6cf0, #e4dcff); }
+  #axis { --track: linear-gradient(90deg, #1fb5a5, #bdeee8, #1fb5a5); }
+  #age  { --track: linear-gradient(90deg, #a8f0c6, #ffe08a 45%, #ffb199); }
+
+  .presets h3 { margin: 6px 0 10px; font-size: 1.05rem; }
+  .preset-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+  .preset {
+    padding: 8px 12px; border-radius: 14px; cursor: pointer;
+    border: 1.5px solid var(--border); background: var(--soft); color: var(--ink);
+    font: 600 14px/1.2 "Fredoka", sans-serif;
+    transition: transform .15s, background .2s;
+  }
+  .preset:hover { transform: translateY(-2px); }
+  .preset[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+  /* ---------- Learn ---------- */
+  .learn { padding-top: 8px; padding-bottom: 24px; }
+  .learn h2 { font-size: 1.8rem; margin: 0 0 14px; text-align: center; }
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .card {
+    padding: 18px; border-radius: var(--radius);
+    background: var(--card); border: 1.5px solid var(--border); box-shadow: var(--shadow);
+  }
+  .card h3 { margin: 6px 0 6px; font-size: 1.15rem; }
+  .card p { margin: 0; font-size: 15px; color: var(--muted); }
+  .card .emoji { font-size: 30px; line-height: 1; }
+
+  footer { padding-top: 8px; padding-bottom: 40px; text-align: center; font-size: 14px; color: var(--muted); }
+  kbd {
+    display: inline-block; min-width: 1.6em; padding: 1px 6px; border-radius: 6px;
+    border: 1.5px solid var(--border); border-bottom-width: 3px; background: var(--card);
+    font: 600 12.5px/1.5 ui-monospace, Consolas, monospace; color: var(--ink);
+  }
+
+  @media (max-width: 1000px) {
+    .cards { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 900px) {
+    .app { grid-template-columns: minmax(0, 1fr); }
+    /* Let the viewer stick to the top while you play with the sliders below it */
+    .stage { display: contents; }
+    .viewer { position: sticky; top: 0; z-index: 5; border-radius: 0 0 22px 22px; margin: 0 -16px; box-shadow: var(--shadow); }
+    .toolbar { order: -1; }
+  }
+  @media (max-width: 560px) {
+    .hero { padding-top: 28px; }
+    .picker { gap: 10px; width: 100%; justify-content: space-between; }
+    .scene-btn { width: calc((100% - 20px) / 3); height: 84px; }
+    .glasses-switch { width: 100%; justify-content: space-between; }
+    .readout { grid-template-columns: 1fr; text-align: center; }
+    .acuity { grid-row: auto; }
+    .meta { justify-content: center; }
+    .cards { grid-template-columns: 1fr; }
+    .chip { font-size: 12px; top: 8px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#controls">Skip to the prescription controls</a>
+
+<header class="wrap hero">
+  <p class="eyebrow"><span class="wobble" aria-hidden="true">👓</span> A tiny vision simulator</p>
+  <h1>See the world the way glasses-wearers do: <span class="blurword" id="blurword">blurry</span>.</h1>
+  <p class="lede">Got 20/20 vision? Lucky you. Pick a scene, dial in a prescription, and see what the rest of us see before we find our glasses (usually on top of our head).</p>
+</header>
+
+<main class="wrap app">
+  <div class="stage">
+    <div class="toolbar">
+      <div class="picker" role="radiogroup" aria-label="Scene" id="picker">
+        <button type="button" class="scene-btn" role="radio" aria-checked="false" data-scene="landscape" tabindex="-1">
+          <svg viewBox="0 0 48 48" aria-hidden="true" fill="currentColor"><circle cx="35" cy="13" r="5.5"/><path d="M3 41 17 19l8 12 6-8 14 18Z"/></svg>
+          Landscape
+        </button>
+        <button type="button" class="scene-btn" role="radio" aria-checked="true" data-scene="highway" tabindex="0">
+          <svg viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="6" width="38" height="24" rx="5"/><path d="M16 30v13M32 30v13M19 24l10-10M21 14h8v8"/></svg>
+          Highway
+        </button>
+        <button type="button" class="scene-btn" role="radio" aria-checked="false" data-scene="text" tabindex="-1">
+          <svg viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"><path d="M24 13c-5-4-13-4-19-2v27c6-2 14-2 19 2 5-4 13-4 19-2V11c-6-2-14-2-19 2Zm0 0v27"/></svg>
+          Reading
+        </button>
+      </div>
+
+      <button type="button" class="glasses-switch" id="glasses" role="switch" aria-checked="false">
+        <span>Glasses</span>
+        <span class="track" aria-hidden="true"><span class="knob">👓</span></span>
+        <span class="state" id="glassesState" aria-hidden="true">Off</span>
+      </button>
+    </div>
+
+    <figure class="viewer" id="viewer">
+      <span class="chip left" id="distanceChip">📏 About 50 m away</span>
+      <span class="chip right" id="glassesChip">🙈 No glasses</span>
+
+      <svg viewBox="0 0 1200 750" preserveAspectRatio="xMidYMid slice" role="img" aria-labelledby="viewTitle viewDesc">
+        <title id="viewTitle">Highway scene</title>
+        <desc id="viewDesc"></desc>
+        <defs>
+          <!-- Blur filters live in a rotated coordinate system so astigmatism can smear along any axis. -->
+          <filter id="blurBase" filterUnits="userSpaceOnUse" x="-300" y="-525" width="1800" height="1800" color-interpolation-filters="sRGB">
+            <feGaussianBlur id="blurBaseFx" stdDeviation="0 0"/>
+          </filter>
+          <filter id="blurLens" filterUnits="userSpaceOnUse" x="-300" y="-525" width="1800" height="1800" color-interpolation-filters="sRGB">
+            <feGaussianBlur id="blurLensFx" stdDeviation="0 0"/>
+          </filter>
+          <filter id="rimBlur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="16"/></filter>
+
+          <clipPath id="lensClip"><path id="lensShape" d="M240 50H960A170 170 0 0 1 1130 220V530A170 170 0 0 1 960 700H240A170 170 0 0 1 70 530V220A170 170 0 0 1 240 50Z"/></clipPath>
+
+          <linearGradient id="skyL" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5fb8f0"/><stop offset=".7" stop-color="#bfe8ff"/><stop offset="1" stop-color="#ffeccf"/></linearGradient>
+          <linearGradient id="skyH" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6fbff3"/><stop offset="1" stop-color="#dcf2ff"/></linearGradient>
+          <linearGradient id="glint" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".16"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+
+          <g id="pine">
+            <rect x="-7" y="-6" width="14" height="32" fill="#6b4226"/>
+            <polygon points="0,-165 -42,-95 42,-95" fill="#2f6e3c"/>
+            <polygon points="0,-128 -56,-46 56,-46" fill="#2a6537"/>
+            <polygon points="0,-88 -70,0 70,0" fill="#255c32"/>
+          </g>
+          <g id="cloud" fill="#fff">
+            <ellipse cx="0" cy="10" rx="55" ry="22"/><ellipse cx="42" cy="-6" rx="44" ry="32"/>
+            <ellipse cx="88" cy="10" rx="52" ry="22"/><ellipse cx="42" cy="18" rx="72" ry="18"/>
+          </g>
+
+          <!-- ===================== Scene: landscape ===================== -->
+          <g id="scene-landscape">
+            <rect x="-300" y="-300" width="1800" height="840" fill="url(#skyL)"/>
+            <circle cx="930" cy="150" r="115" fill="#fff4b8" opacity=".55"/>
+            <circle cx="930" cy="150" r="62" fill="#ffd23f"/>
+            <use href="#cloud" transform="translate(130 95)"/>
+            <use href="#cloud" transform="translate(600 70) scale(.85)"/>
+            <use href="#cloud" transform="translate(1060 260) scale(.55)"/>
+
+            <g transform="translate(300 170)">
+              <path d="M0-70C45-70 62-35 58-5 54 25 22 48 12 62H-12C-22 48-54 25-58-5-62-35-45-70 0-70Z" fill="#ff5d73"/>
+              <path d="M0-70C18-70 26-35 24-5 22 25 10 48 6 62H-6C-10 48-22 25-24-5-26-35-18-70 0-70Z" fill="#ffc93c"/>
+              <path d="M0-70C6-70 8-35 8-5 8 25 3 48 2 62H-2C-3 48-8 25-8-5-8-35-6-70 0-70Z" fill="#4361ee"/>
+              <path d="M-11 62-8 80M11 62 8 80" stroke="#6b4a2a" stroke-width="2.5"/>
+              <rect x="-10" y="80" width="20" height="15" rx="2" fill="#8b5a2b"/>
+            </g>
+
+            <g fill="none" stroke="#2a3242" stroke-width="3" stroke-linecap="round">
+              <path d="M520 205q12-12 24 0q12-12 24 0"/>
+              <path d="M592 236q9-9 18 0q9-9 18 0"/>
+              <path d="M556 266q7-7 14 0q7-7 14 0"/>
+              <path d="M676 196q8-8 16 0q8-8 16 0"/>
+            </g>
+
+            <polygon points="-300,470 -120,330 30,420 200,245 360,400 520,290 690,420 860,225 1030,380 1190,285 1500,440 1500,560 -300,560" fill="#9ab4d4"/>
+            <g fill="#fff">
+              <polygon points="200,245 156,290 175,282 190,296 205,283 222,295 246,290"/>
+              <polygon points="860,225 821,270 840,262 856,276 872,262 890,274 909,270"/>
+              <polygon points="520,290 476,320 492,314 506,324 521,313 537,323 559,320"/>
+              <polygon points="1190,285 1139,315 1158,309 1172,320 1188,308 1205,318 1250,315"/>
+            </g>
+            <path d="M-300 540C-100 470 120 470 300 510 460 545 560 470 760 480 940 490 1060 520 1200 500 1320 485 1420 480 1500 490V640H-300Z" fill="#5e9c6b"/>
+            <g>
+              <use href="#pine" transform="translate(110 505) scale(.28)"/>
+              <use href="#pine" transform="translate(140 500) scale(.32)"/>
+              <use href="#pine" transform="translate(172 506) scale(.26)"/>
+              <use href="#pine" transform="translate(960 510) scale(.3)"/>
+              <use href="#pine" transform="translate(992 514) scale(.26)"/>
+              <use href="#pine" transform="translate(1250 498) scale(.3)"/>
+            </g>
+
+            <ellipse cx="600" cy="588" rx="440" ry="36" fill="#4fa9dc"/>
+            <ellipse cx="600" cy="582" rx="410" ry="22" fill="#6cc0ec"/>
+            <g stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".85">
+              <path d="M420 578h50M520 592h40M640 576h60M770 590h40M880 582h30"/>
+            </g>
+            <g>
+              <path d="M680 584h46l-8 10h-30Z" fill="#9b5523"/>
+              <path d="M703 584V540" stroke="#3b2a1a" stroke-width="2.5"/>
+              <polygon points="705,544 705,580 732,580" fill="#fff"/>
+              <polygon points="703,540 716,544 703,548" fill="#ff5d73"/>
+            </g>
+
+            <path d="M-300 612C0 588 250 584 480 606 700 630 900 602 1100 600 1250 598 1400 602 1500 606V1050H-300Z" fill="#78c058"/>
+            <path d="M-300 710C200 680 600 696 900 706 1100 712 1300 698 1500 702V1050H-300Z" fill="#86cc63"/>
+
+            <g>
+              <rect x="935" y="520" width="18" height="44" fill="#6d3b1c"/>
+              <g fill="#eef2f5" opacity=".9">
+                <circle cx="945" cy="500" r="10"/><circle cx="956" cy="477" r="13"/><circle cx="972" cy="450" r="17"/>
+              </g>
+              <rect x="840" y="572" width="130" height="72" fill="#c06a22"/>
+              <path d="M840 590h130M840 608h130M840 626h130" stroke="#a3561a" stroke-width="2"/>
+              <polygon points="820,578 905,510 990,578" fill="#7a2e1d"/>
+              <rect x="892" y="602" width="26" height="42" rx="2" fill="#5a3010"/>
+              <g stroke="#5a3010" stroke-width="3">
+                <rect x="852" y="590" width="28" height="24" fill="#ffe08a"/>
+                <rect x="932" y="590" width="28" height="24" fill="#ffe08a"/>
+                <path d="M866 590v24M852 602h28M946 590v24M932 602h28"/>
+              </g>
+            </g>
+
+            <use href="#pine" transform="translate(-10 662) scale(.9)"/>
+            <use href="#pine" transform="translate(165 676) scale(.85)"/>
+            <use href="#pine" transform="translate(70 712) scale(1.15)"/>
+            <use href="#pine" transform="translate(1045 684) scale(.7)"/>
+            <use href="#pine" transform="translate(1215 690) scale(.9)"/>
+            <use href="#pine" transform="translate(1125 738) scale(1.2)"/>
+
+            <g>
+              <rect x="374" y="662" width="12" height="130" fill="#7a4b26"/>
+              <rect x="280" y="628" width="200" height="52" rx="8" fill="#d39a5b" stroke="#7a4b26" stroke-width="4"/>
+              <text x="380" y="662" text-anchor="middle" font-family="Fredoka, system-ui, sans-serif" font-weight="700" font-size="21" fill="#3b2410">Trailhead · 2 km</text>
+            </g>
+            <g id="flowers"></g>
+          </g>
+
+          <!-- ===================== Scene: highway ===================== -->
+          <g id="scene-highway">
+            <rect x="-300" y="-300" width="1800" height="690" fill="url(#skyH)"/>
+            <use href="#cloud" transform="translate(40 210) scale(.7)"/>
+            <use href="#cloud" transform="translate(1080 190) scale(.7)"/>
+            <use href="#cloud" transform="translate(1140 330) scale(.4)"/>
+            <polygon points="-300,380 -100,300 100,360 300,290 500,370 700,300 900,365 1100,295 1300,360 1500,320 1500,400 -300,400" fill="#a9c3dc"/>
+            <path d="M-300 380C-50 330 150 320 350 350 480 370 520 340 640 335 800 330 900 360 1050 345 1200 330 1350 340 1500 350V400H-300Z" fill="#7fb47c"/>
+            <rect x="-300" y="372" width="1800" height="760" fill="#6db158"/>
+            <polygon points="575,372 630,372 1882,1100 -686,1100" fill="#50565f"/>
+            <g id="roadMarks"></g>
+
+            <use href="#pine" transform="translate(470 420) scale(.25)"/>
+            <use href="#pine" transform="translate(740 420) scale(.25)"/>
+            <use href="#pine" transform="translate(350 470) scale(.45)"/>
+            <use href="#pine" transform="translate(860 470) scale(.45)"/>
+            <use href="#pine" transform="translate(120 560) scale(.9)"/>
+            <use href="#pine" transform="translate(1080 560) scale(.9)"/>
+            <use href="#pine" transform="translate(10 660) scale(1.25)"/>
+            <use href="#pine" transform="translate(1200 660) scale(1.25)"/>
+
+            <!-- speed limit -->
+            <rect x="1095" y="556" width="10" height="60" fill="#8d96a3"/>
+            <rect x="1050" y="440" width="100" height="122" rx="9" fill="#fff" stroke="#222" stroke-width="4"/>
+            <g font-family="Overpass, 'Arial Narrow', sans-serif" font-weight="800" fill="#111" text-anchor="middle">
+              <text x="1100" y="473" font-size="19">SPEED</text>
+              <text x="1100" y="496" font-size="19">LIMIT</text>
+              <text x="1100" y="548" font-size="50">65</text>
+            </g>
+
+            <!-- car ahead -->
+            <g>
+              <ellipse cx="600" cy="654" rx="96" ry="11" fill="#000" opacity=".35"/>
+              <rect x="528" y="626" width="28" height="28" rx="5" fill="#1b1b1b"/>
+              <rect x="644" y="626" width="28" height="28" rx="5" fill="#1b1b1b"/>
+              <path d="M540 574 556 524Q560 516 570 516H630Q640 516 644 524L660 574Z" fill="#c92f3c"/>
+              <path d="M553 568 565 530Q567 525 573 525H627Q633 525 635 530L647 568Z" fill="#2b3a4a"/>
+              <path d="M572 530h22l-14 34h-16Z" fill="#fff" opacity=".12"/>
+              <rect x="515" y="570" width="170" height="68" rx="16" fill="#e63946"/>
+              <rect x="523" y="584" width="34" height="15" rx="5" fill="#ff2d2d"/>
+              <rect x="643" y="584" width="34" height="15" rx="5" fill="#ff2d2d"/>
+              <rect x="527" y="587" width="12" height="8" rx="2" fill="#ffd1d1"/>
+              <rect x="661" y="587" width="12" height="8" rx="2" fill="#ffd1d1"/>
+              <rect x="570" y="600" width="60" height="27" rx="3" fill="#fff" stroke="#333" stroke-width="1.5"/>
+              <text x="600" y="619" text-anchor="middle" font-family="Overpass, sans-serif" font-weight="800" font-size="13" fill="#1d2a6b">SQU1NT</text>
+              <rect x="518" y="628" width="164" height="9" rx="4.5" fill="#2a2a2a"/>
+            </g>
+
+            <!-- gantry and signs -->
+            <rect x="192" y="84" width="16" height="480" fill="#8d96a3"/>
+            <rect x="992" y="84" width="16" height="480" fill="#8d96a3"/>
+            <rect x="186" y="86" width="828" height="14" fill="#9aa3af"/>
+
+            <g font-family="Overpass, 'Arial Narrow', sans-serif" font-weight="800" fill="#fff">
+              <rect x="230" y="110" width="340" height="190" rx="14" fill="#0b6e3d"/>
+              <rect x="237" y="117" width="326" height="176" rx="9" fill="none" stroke="#fff" stroke-width="4"/>
+              <g transform="translate(292 182)">
+                <path d="M-30-32H30C32-10 30 14 0 36-30 14-32-10-30-32Z"/>
+                <path d="M-26-28H26C28-8 26 12 0 31-26 12-28-8-26-28Z" fill="#1f4fbf"/>
+                <path d="M-26-28H26V-16H-26Z" fill="#d7263d"/>
+                <text y="-19" font-size="8" text-anchor="middle">INTERSTATE</text>
+                <text y="15" font-size="27" text-anchor="middle">20</text>
+              </g>
+              <text x="338" y="178" font-size="37">Downtown</text>
+              <text x="338" y="221" font-size="37">Airport</text>
+              <path d="M0-24 14-8H5V24H-5V-8H-14Z" transform="translate(330 266)"/>
+              <path d="M0-24 14-8H5V24H-5V-8H-14Z" transform="translate(470 266)"/>
+
+              <rect x="600" y="110" width="380" height="190" rx="14" fill="#0b6e3d"/>
+              <rect x="607" y="117" width="366" height="176" rx="9" fill="none" stroke="#fff" stroke-width="4"/>
+              <text x="790" y="176" font-size="43" text-anchor="middle">Springfield</text>
+              <text x="790" y="220" font-size="34" text-anchor="middle">Main St</text>
+              <text x="790" y="274" font-size="28" text-anchor="middle">1/2 MILE</text>
+
+              <rect x="830" y="62" width="150" height="56" rx="10" fill="#0b6e3d" stroke="#fff" stroke-width="4"/>
+              <text x="905" y="101" font-size="31" text-anchor="middle">EXIT 42</text>
+            </g>
+          </g>
+
+          <!-- ===================== Scene: reading ===================== -->
+          <g id="scene-text">
+            <rect x="-300" y="-300" width="1800" height="1400" fill="#c99d74"/>
+            <g fill="none" stroke="#b5875f" stroke-width="4" opacity=".55">
+              <path d="M-300 110C200 90 600 150 1500 100"/>
+              <path d="M-300 300C300 280 800 330 1500 290"/>
+              <path d="M-300 520C250 540 700 490 1500 530"/>
+              <path d="M-300 720C300 700 900 750 1500 710"/>
+              <path d="M-300 900C400 880 900 930 1500 890"/>
+            </g>
+            <circle cx="105" cy="650" r="52" fill="none" stroke="#7a4a2a" stroke-width="6" opacity=".25"/>
+
+            <!-- the glasses were on the desk all along -->
+            <g transform="translate(95 430) rotate(-12)">
+              <path d="M-78 0Q-80-30-46-36" fill="none" stroke="#222" stroke-width="6" stroke-linecap="round"/>
+              <circle cx="-40" cy="0" r="38" fill="#bfe3ff" fill-opacity=".35" stroke="#222" stroke-width="7"/>
+              <circle cx="44" cy="0" r="38" fill="#bfe3ff" fill-opacity=".35" stroke="#222" stroke-width="7"/>
+              <path d="M-4-6Q2-16 8-6" fill="none" stroke="#222" stroke-width="6"/>
+            </g>
+
+            <path d="M1185 85q48 32 0 72" fill="none" stroke="#f4f4f4" stroke-width="18" stroke-linecap="round"/>
+            <circle cx="1110" cy="120" r="78" fill="#f7f7f7" stroke="#dcdcdc" stroke-width="3"/>
+            <circle cx="1110" cy="120" r="60" fill="#6f4e37"/>
+            <ellipse cx="1092" cy="104" rx="20" ry="8" fill="#a07a5c" opacity=".6"/>
+
+            <g transform="rotate(-25 1100 620)">
+              <rect x="1012" y="610" width="18" height="18" fill="#ff8fa0"/>
+              <rect x="1026" y="610" width="10" height="18" fill="#c0c0c0"/>
+              <rect x="1036" y="610" width="146" height="18" fill="#ffc93c"/>
+              <polygon points="1182,610 1208,619 1182,628" fill="#f1d3a5"/>
+              <polygon points="1200,616 1208,619 1200,622" fill="#333"/>
+            </g>
+
+            <g transform="rotate(-1.2 600 380)">
+              <rect x="200" y="48" width="820" height="690" rx="4" fill="#000" opacity=".18"/>
+              <rect x="190" y="36" width="820" height="690" rx="3" fill="#fbfaf5"/>
+              <g font-family="Georgia, 'Times New Roman', serif" fill="#1a1a1a">
+                <text x="600" y="108" text-anchor="middle" font-size="60" font-weight="700" letter-spacing="2">THE DAILY SQUINT</text>
+                <rect x="230" y="124" width="740" height="3"/>
+                <text x="600" y="148" text-anchor="middle" font-size="15" letter-spacing="1.5">SATURDAY · VOL. 20, NO. 20 · PRICE: ONE GOOD SQUINT</text>
+                <rect x="230" y="158" width="740" height="1.5"/>
+                <text x="600" y="210" text-anchor="middle" font-size="40" font-weight="700">Local Resident Finds Glasses</text>
+                <text x="600" y="254" text-anchor="middle" font-size="40" font-weight="700">On Top of Own Head</text>
+                <path d="M607 286V620" stroke="#c9c4b8" stroke-width="1.5"/>
+                <text x="232" y="306" font-size="21">
+                  <tspan x="232" dy="0">SPRINGFIELD — A local resident</tspan>
+                  <tspan x="232" dy="28">spent forty-five minutes hunting</tspan>
+                  <tspan x="232" dy="28">for their glasses on Tuesday,</tspan>
+                  <tspan x="232" dy="28">only to find them perched on</tspan>
+                  <tspan x="232" dy="28">top of their own head.</tspan>
+                  <tspan x="232" dy="42">“I checked the couch, the fridge</tspan>
+                  <tspan x="232" dy="28">and the car,” they said. “Twice.”</tspan>
+                  <tspan x="232" dy="42">Experts say this happens to</tspan>
+                  <tspan x="232" dy="28">nearly everyone who wears</tspan>
+                  <tspan x="232" dy="28">glasses, usually right before</tspan>
+                  <tspan x="232" dy="28">an important meeting.</tspan>
+                </text>
+                <text x="628" y="306" font-size="21">
+                  <tspan x="628" dy="0">Eye doctors recommend keeping</tspan>
+                  <tspan x="628" dy="28">a dedicated spot for frames,</tspan>
+                  <tspan x="628" dy="28">such as a bowl by the door or,</tspan>
+                  <tspan x="628" dy="28">ideally, your face.</tspan>
+                  <tspan x="628" dy="42">Meanwhile, the cat has been</tspan>
+                  <tspan x="628" dy="28">named a person of interest after</tspan>
+                  <tspan x="628" dy="28">two pairs vanished last week.</tspan>
+                  <tspan x="628" dy="42" font-weight="700">WEATHER:</tspan>
+                  <tspan x="628" dy="28">Sunny, with a high chance of</tspan>
+                  <tspan x="628" dy="28">fogged-up lenses when walking</tspan>
+                  <tspan x="628" dy="28">into a warm bakery.</tspan>
+                </text>
+                <rect x="230" y="646" width="740" height="1.5"/>
+                <text x="600" y="674" text-anchor="middle" font-size="14" font-style="italic">This page is best read at about 40 cm (16 in) from your eyes.</text>
+                <text x="600" y="694" text-anchor="middle" font-size="14" font-style="italic">If this tiny line looks sharp, your near vision is doing great.</text>
+              </g>
+            </g>
+          </g>
+        </defs>
+
+        <!-- What the naked eye sees -->
+        <g id="baseLayer">
+          <g id="baseRot" transform="rotate(180 600 375)">
+            <g id="baseBlur">
+              <g id="baseUnrot" transform="rotate(-180 600 375)"><use id="baseUse" href="#scene-highway"/></g>
+            </g>
+          </g>
+        </g>
+
+        <!-- What you see through the lens (only visible with glasses on) -->
+        <g id="lensLayer" clip-path="url(#lensClip)">
+          <g id="lensRot" transform="rotate(180 600 375)">
+            <g id="lensBlur">
+              <g id="lensUnrot" transform="rotate(-180 600 375)"><use id="lensUse" href="#scene-highway"/></g>
+            </g>
+          </g>
+          <polygon points="250,50 470,50 120,700 -100,700" fill="url(#glint)"/>
+        </g>
+
+        <!-- The frame, way too close to focus on -->
+        <g id="frameLayer" aria-hidden="true">
+          <path d="M-60-60H1260V810H-60ZM240 50H960A170 170 0 0 1 1130 220V530A170 170 0 0 1 960 700H240A170 170 0 0 1 70 530V220A170 170 0 0 1 240 50Z" fill="#0c0d1a" fill-opacity=".14" fill-rule="evenodd"/>
+          <use href="#lensShape" fill="none" stroke="#17171f" stroke-width="40" filter="url(#rimBlur)" opacity=".85"/>
+        </g>
+      </svg>
+
+      <div class="toast" id="toast" aria-hidden="true"></div>
+    </figure>
+
+    <section class="readout" aria-label="How sharp it looks">
+      <div class="acuity">
+        <span class="label">Sharpness</span>
+        <span class="value" id="acuity">20/130</span>
+      </div>
+      <p class="caption fun" id="caption">Was that our exit?!</p>
+      <div class="meta">
+        <span class="badge" id="badge"></span>
+        <span class="effort" id="effort">
+          <span>Focus effort</span>
+          <span class="bar" aria-hidden="true"><span class="fill" id="effortFill"></span></span>
+          <span id="effortLabel">Relaxed</span>
+        </span>
+      </div>
+      <p class="explain-line" id="explainLine"></p>
+    </section>
+  </div>
+
+  <section class="panel" id="controls" aria-labelledby="rxTitle" tabindex="-1">
+    <h2 id="rxTitle">Prescription</h2>
+
+    <div class="rx" aria-hidden="true">
+      <div class="rx-head"><span>℞ Eyeglasses</span></div>
+      <dl class="rx-row">
+        <div><dt>SPH</dt><dd id="rxSph">−2.00</dd></div>
+        <div><dt>CYL</dt><dd id="rxCyl">—</dd></div>
+        <div><dt>AXIS</dt><dd id="rxAxis">—</dd></div>
+      </dl>
+    </div>
+    <p class="zone" id="zone">👁️ Sharp zone: <strong>13 cm → 50 cm</strong></p>
+
+    <div class="control">
+      <div class="control-top">
+        <label for="sph">Sphere</label>
+        <output for="sph" id="sphOut">−2.00 D</output>
+      </div>
+      <input type="range" id="sph" min="-10" max="6" step="0.25" value="-2" aria-describedby="sphHint">
+      <div class="scale" aria-hidden="true"><span>← Nearsighted</span><span>0</span><span>Farsighted →</span></div>
+      <p class="hint" id="sphHint">Minus means far things blur. Plus means near things blur first.</p>
+    </div>
+
+    <div class="control">
+      <div class="control-top">
+        <label for="cyl">Astigmatism (cylinder)</label>
+        <output for="cyl" id="cylOut">None</output>
+      </div>
+      <input type="range" id="cyl" min="-4" max="0" step="0.25" value="0" aria-describedby="cylHint">
+      <div class="scale" aria-hidden="true"><span>Lots</span><span>None</span></div>
+      <p class="hint" id="cylHint">Smears the blur in one direction, like a stretched photo.</p>
+    </div>
+
+    <div class="control inactive" id="axisControl">
+      <div class="control-top">
+        <label for="axis">Astigmatism angle (axis)</label>
+        <output for="axis" id="axisOut">180°</output>
+      </div>
+      <input type="range" id="axis" min="5" max="180" step="5" value="180" aria-describedby="axisHint">
+      <p class="hint" id="axisHint">Which way the smear goes. Only matters with some astigmatism.</p>
+    </div>
+
+    <div class="control">
+      <div class="control-top">
+        <label for="age">Age</label>
+        <output for="age" id="ageOut">30</output>
+      </div>
+      <input type="range" id="age" min="5" max="80" step="1" value="30" aria-describedby="ageHint">
+      <p class="hint" id="ageHint">The eye's zoom lens stiffens with age. After about 45, reading up close gets hard.</p>
+    </div>
+
+    <div class="presets">
+      <h3 id="presetsTitle">Try a preset</h3>
+      <ul class="preset-list" aria-labelledby="presetsTitle" id="presets"></ul>
+    </div>
+  </section>
+</main>
+
+<section class="wrap learn" aria-labelledby="learnTitle">
+  <h2 id="learnTitle">What the numbers mean</h2>
+  <div class="cards">
+    <article class="card">
+      <div class="emoji" aria-hidden="true">🔭</div>
+      <h3>Nearsighted (minus)</h3>
+      <p>The eye focuses too strongly, so far things blur while your phone stays sharp. A −2.00 eye sees clearly only up to 50 cm.</p>
+    </article>
+    <article class="card">
+      <div class="emoji" aria-hidden="true">🔬</div>
+      <h3>Farsighted (plus)</h3>
+      <p>The eye focuses too weakly. Young eyes can squeeze harder to compensate, which is tiring. With age, that trick stops working.</p>
+    </article>
+    <article class="card">
+      <div class="emoji" aria-hidden="true">🌀</div>
+      <h3>Astigmatism</h3>
+      <p>The cornea is shaped more like a rugby ball than a football, so lines in one direction blur more than others. Very common, often mild.</p>
+    </article>
+    <article class="card">
+      <div class="emoji" aria-hidden="true">🦒</div>
+      <h3>Presbyopia</h3>
+      <p>Everyone's focusing lens stiffens with age. Around 45 your arms start getting "too short" to read, even with perfect distance vision.</p>
+    </article>
+  </div>
+</section>
+
+<footer class="wrap">
+  <p>Keyboard: <kbd>Tab</kbd> moves between controls, <kbd>←</kbd> <kbd>→</kbd> change values and scenes, <kbd>G</kbd> toggles glasses, <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> pick a scene.</p>
+  <p>A rough, friendly approximation for empathy, not a medical tool. Real vision also depends on pupil size, lighting and your brain's clever guesswork. See an eye doctor for the real thing.</p>
+</footer>
+
+<p class="sr-only" aria-live="polite" id="announce"></p>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
+  // Blur scale: SVG units of Gaussian std-dev per diopter of defocus, and a cap so it stays recognisable.
+  const BLUR_PER_D = 6;
+  const BLUR_CAP = 70;
+
+  const SCENES = {
+    landscape: {
+      name: 'Landscape', demand: 0, distance: '🏔️ Far away',
+      desc: 'An illustrated mountain landscape: snowy peaks, a lake with a small sailboat, pine trees, a cabin with smoke rising from the chimney, a hot-air balloon, birds and a wooden trailhead sign.',
+      captions: ['You can count the birds 🦅', 'Gorgeous and sharp.', 'The birds are getting fuzzy.', 'Trees? Or tree-shaped clouds?', 'A lovely watercolor.', 'Impressionist painting mode 🎨', 'Blue on top, green below. Nature!']
+    },
+    highway: {
+      name: 'Highway', demand: 0.02, distance: '📏 About 50 m away',
+      desc: 'An illustrated highway from the driver\'s seat: an overhead sign for Interstate 20 to Downtown and Airport, an EXIT 42 sign for Springfield and Main St half a mile ahead, a red car in the middle lane and a 65 speed limit sign.',
+      captions: ['You can read the exit a mile away 🦅', 'Exit sign? No problem.', 'Readable… just in time.', 'Squint. Squint harder. Missed it.', 'Was that our exit?!', 'Green rectangle. Probably important.', 'Is that a sign or a very large leaf?']
+    },
+    text: {
+      name: 'Reading', demand: 2.5, distance: '📖 Reading distance · 40 cm',
+      desc: 'An illustrated newspaper called The Daily Squint lying on a desk, headline: Local Resident Finds Glasses On Top of Own Head, with two columns of text and fine print. A pair of glasses lies on the desk next to it.',
+      captions: ['Crisp as a fresh newspaper 🦅', 'Easy reading.', 'Readable, if you concentrate.', 'The fine print just left the chat.', 'Headlines only, please.', 'Is this… even English?', 'Grey stripes on white paper.']
+    }
+  };
+  const CAPTION_LIMITS = [20, 30, 50, 80, 125, 200, Infinity];
+  const SNELLEN = [20, 25, 30, 40, 50, 60, 70, 80, 100, 125, 150, 200, 250, 300, 400, 500, 600, 800];
+
+  const PRESETS = [
+    { label: '🦅 Perfect vision',    sph: 0,    cyl: 0,     axis: 180, age: 25 },
+    { label: '🤓 A bit nearsighted', sph: -1.5, cyl: 0,     axis: 180, age: 30 },
+    { label: '🙈 Lost my glasses',   sph: -5.5, cyl: -1.25, axis: 170, age: 30 },
+    { label: '🌀 Astigmatism',       sph: -0.5, cyl: -2.5,  axis: 90,  age: 30 },
+    { label: '🔬 Farsighted',        sph: 3,    cyl: 0,     axis: 180, age: 45 },
+    { label: '🦒 Over 50',           sph: 0,    cyl: 0,     axis: 180, age: 56, scene: 'text' }
+  ];
+
+  const state = { scene: 'highway', sph: -2, cyl: 0, axis: 180, age: 30, glasses: false };
+
+  // ---------- Optics (simplified) ----------
+  // Accommodation amplitude by age (Hofstetter's minimum), in diopters.
+  const amplitude = (age) => Math.max(0.25, 15 - 0.25 * age);
+
+  // demand: how many diopters the object asks for (1 / distance in metres).
+  // Each principal meridian needs its own focus; the eye accommodates toward the middle, within its range.
+  function defocus(sph, cyl, age, demand) {
+    const A = amplitude(age);
+    const m1 = demand + sph;          // along the cylinder axis
+    const m2 = demand + sph + cyl;    // perpendicular to it
+    const acc = Math.min(A, Math.max(0, (m1 + m2) / 2));
+    return { b1: Math.abs(m1 - acc), b2: Math.abs(m2 - acc), acc, A, needed: Math.max(m1, m2) };
+  }
+
+  // Rough visual acuity from defocus (Smith-style blur model), as the Snellen denominator.
+  function snellen(b1, b2) {
+    const d = Math.sqrt((b1 * b1 + b2 * b2) / 2);
+    const denom = 20 * Math.sqrt(1 + (3.2 * d) ** 2);
+    return SNELLEN.find((l) => denom <= l * 1.04) ?? 1000;
+  }
+  const fmtAcuity = (d) => d > 800 ? '20/800+' : '20/' + d;
+
+  // ---------- Formatting ----------
+  const MINUS = '−';
+  const fmtSigned = (v) => (v > 0 ? '+' : v < 0 ? MINUS : '') + Math.abs(v).toFixed(2);
+  const spokenSigned = (v) => (v > 0 ? 'plus ' : v < 0 ? 'minus ' : '') + Math.abs(v).toFixed(2);
+  function fmtDist(v) {
+    if (v <= 0.001) return '∞';
+    const cm = 100 / v;
+    return cm >= 100 ? (cm / 100).toFixed(cm >= 1000 ? 0 : 1) + ' m' : Math.round(cm) + ' cm';
+  }
+
+  // ---------- Scene artwork generated in code ----------
+  function el(tag, attrs, parent) {
+    const n = document.createElementNS(SVGNS, tag);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(n);
+    return n;
+  }
+
+  function buildRoad() {
+    const g = $('#roadMarks');
+    const lx = (y) => 575 - 1.7328 * (y - 372);
+    const rx = (y) => 630 + 1.7197 * (y - 372);
+    const at = (y, f) => lx(y) + f * (rx(y) - lx(y));
+    const yAt = (z) => 372 + 3140 / z;               // perspective: z = metres ahead
+    const strip = (f0, f1, color) => {
+      const yA = 373, yB = 1100;
+      el('polygon', { points: `${at(yA, f0)},${yA} ${at(yA, f1)},${yA} ${at(yB, f1)},${yB} ${at(yB, f0)},${yB}`, fill: color }, g);
+    };
+    strip(0.025, 0.04, '#ffd23f');
+    strip(0.96, 0.975, '#f4f4f4');
+    for (let z = 4; z < 400; z += 12) {
+      const y0 = yAt(z), y1 = yAt(z + 4);
+      for (const f of [1 / 3, 2 / 3]) {
+        const w0 = (rx(y0) - lx(y0)) * 0.008, w1 = (rx(y1) - lx(y1)) * 0.008;
+        el('polygon', {
+          points: `${at(y0, f) - w0},${y0} ${at(y0, f) + w0},${y0} ${at(y1, f) + w1},${y1} ${at(y1, f) - w1},${y1}`,
+          fill: '#f4f4f4'
+        }, g);
+      }
+    }
+  }
+
+  function buildFlowers() {
+    const g = $('#flowers');
+    let seed = 2020;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const colors = ['#ff6b8a', '#ffd23f', '#ffffff', '#b388ff', '#ff9a3c'];
+    for (let i = 0; i < 70; i++) {
+      const x = -150 + rnd() * 1500, y = 735 + rnd() * 220;
+      el('path', { d: `M${x} ${y}l-5-15M${x} ${y}v-19M${x} ${y}l5-15`, stroke: '#4f9a3c', 'stroke-width': 3, 'stroke-linecap': 'round', fill: 'none' }, g);
+    }
+    for (let i = 0; i < 90; i++) {
+      const x = -150 + rnd() * 1500, y = 725 + rnd() * 240, r = 5 + rnd() * 5;
+      el('circle', { cx: x, cy: y, r, fill: colors[i % colors.length] }, g);
+      el('circle', { cx: x, cy: y, r: r * 0.38, fill: i % 5 === 1 ? '#ff9a3c' : '#ffd23f' }, g);
+    }
+  }
+
+  // ---------- Rendering ----------
+  const viewer = $('#viewer');
+  const layers = {
+    base: { rot: $('#baseRot'), unrot: $('#baseUnrot'), blur: $('#baseBlur'), fx: $('#blurBaseFx'), filter: 'url(#blurBase)', use: $('#baseUse') },
+    lens: { rot: $('#lensRot'), unrot: $('#lensUnrot'), blur: $('#lensBlur'), fx: $('#blurLensFx'), filter: 'url(#blurLens)', use: $('#lensUse') }
+  };
+  let current = { base: [0, 0], lens: [0, 0] };
+  let frame = 0;
+
+  function paintLayer(layer, [b1, b2]) {
+    const sx = Math.min(BLUR_CAP, b1 * BLUR_PER_D);
+    const sy = Math.min(BLUR_CAP, b2 * BLUR_PER_D);
+    if (sx < 0.05 && sy < 0.05) {
+      layer.blur.removeAttribute('filter');
+    } else {
+      layer.fx.setAttribute('stdDeviation', `${sx.toFixed(2)} ${sy.toFixed(2)}`);
+      layer.blur.setAttribute('filter', layer.filter);
+    }
+  }
+
+  function animateTo(target) {
+    cancelAnimationFrame(frame);
+    if (reduceMotion.matches) {
+      current = target;
+      paintLayer(layers.base, current.base);
+      paintLayer(layers.lens, current.lens);
+      return;
+    }
+    const from = { base: [...current.base], lens: [...current.lens] };
+    const t0 = performance.now(), dur = 320;
+    const step = (now) => {
+      const p = Math.min(1, (now - t0) / dur), e = 1 - (1 - p) ** 3;
+      for (const k of ['base', 'lens']) current[k] = from[k].map((v, i) => v + (target[k][i] - v) * e);
+      paintLayer(layers.base, current.base);
+      paintLayer(layers.lens, current.lens);
+      if (p < 1) frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+  }
+
+  function setAxisRotation(axis) {
+    // Rotate the blur kernel to the cylinder axis, then rotate the picture back upright.
+    for (const layer of Object.values(layers)) {
+      layer.rot.setAttribute('transform', `rotate(${axis} 600 375)`);
+      layer.unrot.setAttribute('transform', `rotate(${-axis} 600 375)`);
+    }
+  }
+
+  let lastAcuity = null;
+  function render(opts = {}) {
+    const scene = SCENES[state.scene];
+    const naked = defocus(state.sph, state.cyl, state.age, scene.demand);
+    const fixed = defocus(0, 0, state.age, scene.demand);
+    const seen = state.glasses ? fixed : naked;
+
+    setAxisRotation(state.axis);
+    animateTo({ base: [naked.b1, naked.b2], lens: [fixed.b1, fixed.b2] });
+
+    // Scene artwork + labels
+    const href = '#scene-' + state.scene;
+    layers.base.use.setAttribute('href', href);
+    layers.lens.use.setAttribute('href', href);
+    $('#distanceChip').textContent = scene.distance;
+    $('#glassesChip').textContent = state.glasses ? '👓 Glasses on' : '🙈 No glasses';
+    viewer.classList.toggle('glasses-on', state.glasses);
+
+    // Acuity readout
+    const denom = snellen(seen.b1, seen.b2);
+    const acuityText = fmtAcuity(denom);
+    $('#acuity').textContent = acuityText;
+    const caption = scene.captions[CAPTION_LIMITS.findIndex((l) => denom <= l)];
+    $('#caption').textContent = caption;
+    $('#viewTitle').textContent = `${scene.name} scene, simulated at about ${acuityText}${state.glasses ? ' with glasses on' : ' without glasses'}`;
+    $('#viewDesc').textContent = scene.desc;
+
+    $('#explainLine').textContent = denom === 20
+      ? '20/20 means you see at 20 feet what a typical eye sees at 20 feet. Lucky you.'
+      : `${acuityText} means you'd need to stand 20 feet away to see what a 20/20 eye sees from ${denom > 800 ? 'over 800' : denom} feet.`;
+
+    // Badge
+    const badge = $('#badge');
+    let ok, text;
+    if (state.scene === 'text') {
+      const armsTooShort = seen.needed > seen.A && denom > 30;
+      ok = denom <= 40;
+      text = ok ? '📖 Comfortable to read' : armsTooShort ? '🦒 Arms not long enough!' : '📖 Too blurry to read';
+    } else {
+      const far = state.glasses ? defocus(0, 0, state.age, 0) : defocus(state.sph, state.cyl, state.age, 0);
+      ok = snellen(far.b1, far.b2) <= 40;
+      text = ok ? '🚗 Legal to drive' : '🚫 Not legal to drive (most places need 20/40)';
+    }
+    badge.className = 'badge ' + (ok ? 'ok' : 'bad');
+    badge.textContent = text;
+
+    // Focus effort
+    const ratio = seen.A ? seen.acc / seen.A : 0;
+    const maxed = seen.acc >= seen.A - 0.01 && seen.needed > seen.A;
+    const effort = seen.acc < 0.1 ? 'Relaxed 😌' : maxed || ratio > 0.85 ? 'Maxed out 😵' : ratio > 0.5 ? 'Working hard 😬' : 'Light work 🙂';
+    $('#effortFill').style.width = Math.round(Math.min(1, ratio) * 100) + '%';
+    $('#effortFill').style.background = ratio > 0.85 ? 'var(--coral)' : ratio > 0.5 ? 'var(--sun)' : 'var(--mint)';
+    $('#effortLabel').textContent = effort;
+
+    // Prescription card and sharp zone
+    $('#rxSph').textContent = state.sph === 0 ? 'Plano' : fmtSigned(state.sph);
+    $('#rxCyl').textContent = state.cyl === 0 ? '—' : fmtSigned(state.cyl);
+    $('#rxAxis').textContent = state.cyl === 0 ? '—' : '×' + String(state.axis).padStart(3, '0');
+
+    const se = state.glasses ? 0 : state.sph + state.cyl / 2;
+    const A = amplitude(state.age);
+    const nearV = A - se, farV = Math.max(0, -se);
+    const smeared = !state.glasses && state.cyl <= -0.75 ? ' <span>(smeared by astigmatism)</span>' : '';
+    $('#zone').innerHTML = nearV < farV
+      ? '👁️ Sharp zone: <strong>nothing is fully sharp 😵</strong>'
+      : `👁️ Sharp zone: <strong>${fmtDist(nearV)} → ${fmtDist(farV)}</strong>${smeared}`;
+
+    // Slider outputs
+    $('#sphOut').textContent = state.sph === 0 ? '0.00 D' : fmtSigned(state.sph) + ' D';
+    $('#cylOut').textContent = state.cyl === 0 ? 'None' : fmtSigned(state.cyl) + ' D';
+    $('#axisOut').textContent = state.axis + '°';
+    $('#ageOut').textContent = state.age;
+    $('#sph').setAttribute('aria-valuetext', state.sph === 0
+      ? '0, no focusing error'
+      : `${spokenSigned(state.sph)} diopters, ${state.sph < 0 ? 'nearsighted' : 'farsighted'}`);
+    $('#cyl').setAttribute('aria-valuetext', state.cyl === 0 ? 'none' : `${spokenSigned(state.cyl)} diopters`);
+    $('#axis').setAttribute('aria-valuetext', `${state.axis} degrees`);
+    $('#age').setAttribute('aria-valuetext', `${state.age} years`);
+    $('#axisControl').classList.toggle('inactive', state.cyl === 0);
+
+    // The headline word blurs along with you
+    const d = Math.sqrt((seen.b1 ** 2 + seen.b2 ** 2) / 2);
+    $('#blurword').style.filter = d > 0.05 ? `blur(${Math.min(3, d * 1.1).toFixed(2)}px)` : 'none';
+
+    // Presets
+    document.querySelectorAll('.preset').forEach((b, i) => {
+      const p = PRESETS[i];
+      const match = p.sph === state.sph && p.cyl === state.cyl && p.age === state.age && (p.cyl === 0 || p.axis === state.axis);
+      b.setAttribute('aria-pressed', String(match));
+    });
+
+    if (opts.toast) showToast(denom);
+    announce(`${scene.name}${state.glasses ? ', glasses on' : ''}: about ${acuityText}. ${caption} ${text}.`);
+    lastAcuity = denom;
+  }
+
+  // ---------- Feedback ----------
+  let toastTimer = 0;
+  function showToast(denom) {
+    const t = $('#toast');
+    if (state.glasses) t.textContent = denom <= 25 ? '✨ Ahhh. Much better.' : '🦒 Still blurry? Time for reading glasses!';
+    else t.textContent = denom <= 25 ? '😎 Who needs glasses anyway?' : '🫣 Where did everything go?';
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  let announceTimer = 0;
+  function announce(msg) {
+    clearTimeout(announceTimer);
+    announceTimer = setTimeout(() => { $('#announce').textContent = msg; }, 700);
+  }
+
+  // ---------- Controls ----------
+  for (const key of ['sph', 'cyl', 'axis', 'age']) {
+    const input = $('#' + key);
+    input.addEventListener('input', () => { state[key] = Number(input.value); render(); });
+  }
+  function syncInputs() {
+    for (const key of ['sph', 'cyl', 'axis', 'age']) $('#' + key).value = state[key];
+  }
+
+  // Scene picker: a radio group with roving tabindex, arrow keys move and select.
+  const sceneButtons = [...document.querySelectorAll('.scene-btn')];
+  function selectScene(name, focus) {
+    state.scene = name;
+    sceneButtons.forEach((b) => {
+      const on = b.dataset.scene === name;
+      b.setAttribute('aria-checked', String(on));
+      b.tabIndex = on ? 0 : -1;
+      if (on && focus) b.focus();
+    });
+    render();
+  }
+  sceneButtons.forEach((b) => b.addEventListener('click', () => selectScene(b.dataset.scene, true)));
+  $('#picker').addEventListener('keydown', (e) => {
+    const i = sceneButtons.findIndex((b) => b.dataset.scene === state.scene);
+    const n = sceneButtons.length;
+    const next = { ArrowRight: i + 1, ArrowDown: i + 1, ArrowLeft: i - 1, ArrowUp: i - 1, Home: 0, End: n - 1 }[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    selectScene(sceneButtons[(next + n) % n].dataset.scene, true);
+  });
+
+  const glassesBtn = $('#glasses');
+  function setGlasses(on) {
+    state.glasses = on;
+    glassesBtn.setAttribute('aria-checked', String(on));
+    $('#glassesState').textContent = on ? 'On' : 'Off';
+    render({ toast: true });
+  }
+  glassesBtn.addEventListener('click', () => setGlasses(!state.glasses));
+
+  const presetList = $('#presets');
+  PRESETS.forEach((p) => {
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'preset';
+    b.textContent = p.label;
+    b.setAttribute('aria-pressed', 'false');
+    b.addEventListener('click', () => {
+      Object.assign(state, { sph: p.sph, cyl: p.cyl, axis: p.axis, age: p.age, glasses: false });
+      glassesBtn.setAttribute('aria-checked', 'false');
+      $('#glassesState').textContent = 'Off';
+      syncInputs();
+      if (p.scene) selectScene(p.scene, false); else render();
+    });
+    li.appendChild(b);
+    presetList.appendChild(li);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.altKey || e.ctrlKey || e.metaKey || e.repeat) return;
+    const k = e.key.toLowerCase();
+    if (k === 'g') { setGlasses(!state.glasses); }
+    else if (k === '1' || k === '2' || k === '3') {
+      const btn = sceneButtons[Number(k) - 1];
+      selectScene(btn.dataset.scene, document.activeElement && document.activeElement.classList.contains('scene-btn'));
+    }
+  });
+
+  buildRoad();
+  buildFlowers();
+  syncInputs();
+  render();
+})();
+</script>
+</body>
+</html>
