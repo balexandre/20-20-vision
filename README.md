@@ -2,9 +2,9 @@
 
 **Got 20/20 vision? This is what the rest of us see before we find our glasses.**
 
-Through My Glasses is a small, playful web page that lets people with perfect eyesight experience what everyday blur feels like. Pick a scene, dial in a prescription, and watch a mountain view, a highway exit sign or a newspaper go soft. Then flip the glasses switch and feel the relief.
+Through My Glasses is a small, playful web page that lets people with perfect eyesight experience what everyday blur feels like. Pick a scene, dial in a prescription, and watch a mountain view, a highway exit sign, or a newspaper go soft. Then flip the glasses switch and feel the relief.
 
-> 🔗 **Try it:** `https://<your-user>.github.io/20-20-vision/`
+> 🔗 **Try it:** https://balexandre.github.io/20-20-vision
 
 ---
 
@@ -12,7 +12,7 @@ Through My Glasses is a small, playful web page that lets people with perfect ey
 
 Telling someone "I'm −3.00" means nothing to them. Showing them that they'd have missed the highway exit makes it click.
 
-This page is for friends, partners, coworkers and kids who have never needed glasses and wonder why we panic when ours go missing. It's also for anyone curious about why reading gets harder after 45.
+This page is for friends, partners, coworkers, and kids who have never needed glasses and wonder why we panic when ours go missing. It's also for anyone curious about why reading gets harder after 45.
 
 ## What you can do
 
@@ -62,7 +62,7 @@ To publish your own copy on GitHub Pages:
 
 1. Fork or push this repository to GitHub.
 2. Go to **Settings → Pages**.
-3. Under **Build and deployment**, choose **Deploy from a branch**, then pick `main` and `/ (root)`.
+3. Under **Build and deployment**, choose **Deploy from a branch**, then pick `master` and `/ (root)`.
 4. Wait a minute, then visit `https://<your-user>.github.io/<repo-name>/`.
 
 ## Ideas for later
